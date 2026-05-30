@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Ent = Net_Core_Api.Domain.Entities;
 using Net_Core_Api.Infrastructure.Persistence;
@@ -29,6 +29,11 @@ public class EquiposGruposHandlers :
 
     public async Task<Ent.EquiposGrupos> Handle(CreateEquipoGrupoCommand r, CancellationToken ct)
     {
+        var nombreDuplicado = await _context.EquiposGrupos
+            .AnyAsync(g => g.Nombre == r.Item.Nombre, ct);
+        if (nombreDuplicado)
+            throw new InvalidOperationException($"Ya existe un grupo con el nombre '{r.Item.Nombre}'.");
+
         _context.EquiposGrupos.Add(r.Item);
         await _context.SaveChangesAsync(ct);
         return r.Item;
@@ -37,6 +42,15 @@ public class EquiposGruposHandlers :
     public async Task<bool> Handle(UpdateEquipoGrupoCommand r, CancellationToken ct)
     {
         if (r.Id != r.Item.EquipoGrupoID) return false;
+
+        var existe = await _context.EquiposGrupos.AnyAsync(g => g.EquipoGrupoID == r.Id, ct);
+        if (!existe) return false;
+
+        var nombreDuplicado = await _context.EquiposGrupos
+            .AnyAsync(g => g.Nombre == r.Item.Nombre && g.EquipoGrupoID != r.Id, ct);
+        if (nombreDuplicado)
+            throw new InvalidOperationException($"Ya existe otro grupo con el nombre '{r.Item.Nombre}'.");
+
         _context.Entry(r.Item).State = EntityState.Modified;
         await _context.SaveChangesAsync(ct);
         return true;
@@ -46,6 +60,12 @@ public class EquiposGruposHandlers :
     {
         var item = await _context.EquiposGrupos.FindAsync(new object[] { r.Id }, ct);
         if (item == null) return false;
+
+        var tieneEquipos = await _context.Equipos
+            .AnyAsync(e => e.EquipoGrupoID == r.Id, ct);
+        if (tieneEquipos)
+            throw new InvalidOperationException("No se puede eliminar el grupo porque tiene equipos asignados.");
+
         _context.EquiposGrupos.Remove(item);
         await _context.SaveChangesAsync(ct);
         return true;
