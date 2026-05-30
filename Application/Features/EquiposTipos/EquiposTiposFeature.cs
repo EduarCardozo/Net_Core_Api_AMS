@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Ent = Net_Core_Api.Domain.Entities;
 using Net_Core_Api.Infrastructure.Persistence;
@@ -29,6 +29,16 @@ public class EquiposTiposHandlers :
 
     public async Task<Ent.EquiposTipos> Handle(CreateEquipoTipoCommand r, CancellationToken ct)
     {
+        var codigoDuplicado = await _context.EquiposTipos
+            .AnyAsync(t => t.Codigo == r.Item.Codigo, ct);
+        if (codigoDuplicado)
+            throw new InvalidOperationException($"Ya existe un tipo de equipo con el código '{r.Item.Codigo}'.");
+
+        var nombreDuplicado = await _context.EquiposTipos
+            .AnyAsync(t => t.Nombre == r.Item.Nombre, ct);
+        if (nombreDuplicado)
+            throw new InvalidOperationException($"Ya existe un tipo de equipo con el nombre '{r.Item.Nombre}'.");
+
         _context.EquiposTipos.Add(r.Item);
         await _context.SaveChangesAsync(ct);
         return r.Item;
@@ -37,6 +47,20 @@ public class EquiposTiposHandlers :
     public async Task<bool> Handle(UpdateEquipoTipoCommand r, CancellationToken ct)
     {
         if (r.Id != r.Item.EquipoTipoID) return false;
+
+        var existe = await _context.EquiposTipos.AnyAsync(t => t.EquipoTipoID == r.Id, ct);
+        if (!existe) return false;
+
+        var codigoDuplicado = await _context.EquiposTipos
+            .AnyAsync(t => t.Codigo == r.Item.Codigo && t.EquipoTipoID != r.Id, ct);
+        if (codigoDuplicado)
+            throw new InvalidOperationException($"Ya existe otro tipo de equipo con el código '{r.Item.Codigo}'.");
+
+        var nombreDuplicado = await _context.EquiposTipos
+            .AnyAsync(t => t.Nombre == r.Item.Nombre && t.EquipoTipoID != r.Id, ct);
+        if (nombreDuplicado)
+            throw new InvalidOperationException($"Ya existe otro tipo de equipo con el nombre '{r.Item.Nombre}'.");
+
         _context.Entry(r.Item).State = EntityState.Modified;
         await _context.SaveChangesAsync(ct);
         return true;
@@ -46,6 +70,12 @@ public class EquiposTiposHandlers :
     {
         var item = await _context.EquiposTipos.FindAsync(new object[] { r.Id }, ct);
         if (item == null) return false;
+
+        var tieneEquipos = await _context.Equipos
+            .AnyAsync(e => e.EquipoTipoID == r.Id, ct);
+        if (tieneEquipos)
+            throw new InvalidOperationException("No se puede eliminar el tipo de equipo porque tiene equipos asignados.");
+
         _context.EquiposTipos.Remove(item);
         await _context.SaveChangesAsync(ct);
         return true;
