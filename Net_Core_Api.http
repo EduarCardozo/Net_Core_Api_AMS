@@ -1,0 +1,37 @@
+@baseUrl = http://localhost:5110
+
+### Obtener todos los equipos
+GET {{baseUrl}}/api/Equipos
+Accept: application/json
+
+###
+
+### Obtener equipo por ID
+GET {{baseUrl}}/api/Equipos/1
+Accept: application/json
+
+###
+
+### Crear equipo
+POST {{baseUrl}}/api/Equipos
+Content-Type: application/json
+
+{
+  "equiPoTipoID": 1,
+  "nombre": "Equipo Test",
+  "codigo": "EQ001"
+}
+
+###
+
+### Obtener todas las OrdenesTrabajo
+GET {{baseUrl}}/api/OrdenesTrabajo
+Accept: application/json
+
+###
+
+### Obtener todos los Usuarios
+GET {{baseUrl}}/api/Usuarios
+Accept: application/json
+
+###
